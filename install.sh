@@ -12,6 +12,7 @@ fi
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 DEST="$BIN_DIR/sshserve"
 DATA_FILE="$BIN_DIR/sshserve_connections.json"
+PATH_LINE="export PATH=\"$BIN_DIR:\$PATH\""
 
 mkdir -p "$BIN_DIR"
 cp "$SRC" "$DEST"
@@ -30,7 +31,32 @@ case ":$PATH:" in
         echo "PATH already contains $BIN_DIR"
         ;;
     *)
-        echo "Add this to your shell profile:"
-        echo "  export PATH=\"$BIN_DIR:\$PATH\""
+        PROFILE="${PROFILE:-}"
+        if [ -z "$PROFILE" ]; then
+            case "${SHELL:-}" in
+                */zsh) PROFILE="$HOME/.zshrc" ;;
+                */bash) PROFILE="$HOME/.bashrc" ;;
+                *) PROFILE="$HOME/.profile" ;;
+            esac
+        fi
+
+        if [ -e "$PROFILE" ] && [ ! -w "$PROFILE" ]; then
+            echo "Cannot write to $PROFILE. Add this line manually:"
+            echo "  $PATH_LINE"
+        else
+            if [ ! -e "$PROFILE" ]; then
+                : > "$PROFILE"
+            fi
+
+            if grep -Fqx "$PATH_LINE" "$PROFILE"; then
+                echo "PATH entry already exists in $PROFILE"
+            else
+                printf '\n# Added by sshserve installer\n%s\n' "$PATH_LINE" >> "$PROFILE"
+                echo "Added PATH entry to $PROFILE"
+            fi
+        fi
+        echo "For current shell run:"
+        echo "  $PATH_LINE"
+        echo "  hash -r"
         ;;
 esac
